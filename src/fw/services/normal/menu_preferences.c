@@ -83,3 +83,30 @@ void menu_preferences_set_scroll_vibe_on_blocked(bool set) {
   s_scroll_vibe_on_blocked = set;
   SET_PREF(PREF_KEY_SCROLL_VIBE_ON_BLOCKED, s_scroll_vibe_on_blocked);
 }
+
+uint8_t menu_preferences_system_file_clean_up() {
+  uint8_t error_flags = 0b111;
+
+  mutex_lock(s_mutex);
+  SettingsFile file = {{0}};
+  if (settings_file_open(&file, FILE_NAME, FILE_LEN) != S_SUCCESS) {
+    goto cleanup;
+  }
+  if (settings_file_delete(&file, PREF_KEY_SCROLL_WRAP_AROUND, sizeof(PREF_KEY_SCROLL_WRAP_AROUND)) == S_SUCCESS) {
+    error_flags &= ~(0b100);
+  }
+  if (settings_file_delete(&file, PREF_KEY_SCROLL_VIBE_ON_WRAP, sizeof(PREF_KEY_SCROLL_VIBE_ON_WRAP)) == S_SUCCESS) {
+    error_flags &= ~(0b010);
+  }
+  if (settings_file_delete(&file, PREF_KEY_SCROLL_VIBE_ON_BLOCKED, sizeof(PREF_KEY_SCROLL_VIBE_ON_BLOCKED)) == S_SUCCESS) {
+    error_flags &= ~(0b001);
+  }
+
+  settings_file_close(&file);
+  
+
+cleanup:
+  mutex_unlock(s_mutex);
+
+  return error_flags;
+}

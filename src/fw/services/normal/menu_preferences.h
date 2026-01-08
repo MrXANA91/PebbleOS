@@ -19,3 +19,5 @@ void menu_preferences_set_scroll_vibe_on_wrap_around(bool set);
 bool menu_preferences_get_scroll_vibe_on_blocked(void);
 
 void menu_preferences_set_scroll_vibe_on_blocked(bool set);
+
+uint8_t menu_preferences_system_file_clean_up();
