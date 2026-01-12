@@ -21,8 +21,16 @@ static const char *s_units_distance_labels[] = {
     i18n_noop("Miles"),
 };
 
+static const char *s_menu_scroll_vibe_behavior_labels[] = {
+    i18n_noop("No vibe"),
+    i18n_noop("On wrap around"),
+    i18n_noop("On blocked"),
+};
+
 enum SettingsHealthItem {
     SettingsHealthUnitDistance,
+    SettingsMenuScrollWrapAround,
+    SettingsMenuScrollVibeBehavior,
     NumSettingsHealthItems
 };
 
@@ -50,6 +58,19 @@ static void prv_draw_row_cb(SettingsCallbacks *context, GContext *ctx,
                 subtitle = s_units_distance_labels[unit];
             }
             break;
+        case SettingsMenuScrollWrapAround:
+            title = i18n_noop("Menu Wrap Around");
+            subtitle = shell_prefs_get_menu_scroll_wrap_around_enable() ? i18n_noop("On") : i18n_noop("Off");
+            break;
+        case SettingsMenuScrollVibeBehavior:
+            title = i18n_noop("Menu Vibes");
+            MenuScrollVibeBehavior behavior = shell_prefs_get_menu_scroll_vibe_behavior();
+            if (behavior >= MenuScrollVibeBehaviorsCount) {
+                subtitle = i18n_noop("Unknown");
+            } else {
+                subtitle = s_menu_scroll_vibe_behavior_labels[behavior];
+            }
+            break;
         default:
             WTF;
     }
@@ -63,6 +84,14 @@ static void prv_select_click_cb(SettingsCallbacks *context, uint16_t row) {
             UnitsDistance unit = shell_prefs_get_units_distance();
             unit = (unit + 1) % UnitsDistanceCount;
             shell_prefs_set_units_distance(unit);
+            break;
+        case SettingsMenuScrollWrapAround:
+            shell_prefs_set_menu_scroll_wrap_around_enable(!shell_prefs_get_menu_scroll_wrap_around_enable());
+            break;
+        case SettingsMenuScrollVibeBehavior:
+            MenuScrollVibeBehavior behavior = shell_prefs_get_menu_scroll_vibe_behavior();
+            behavior = (behavior + 1) % MenuScrollVibeBehaviorsCount;
+            shell_prefs_set_menu_scroll_vibe_behavior(behavior);
             break;
         default:
             WTF;
