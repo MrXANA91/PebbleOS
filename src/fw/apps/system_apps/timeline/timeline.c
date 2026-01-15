@@ -169,6 +169,32 @@ static void prv_launch_watchface(void *data) {
 #endif
 }
 
+static void prv_swap_timeline(void *data) {
+  const bool is_future = (s_app_data->timeline_model.direction == TimelineIterDirectionFuture);
+  const bool to_timeline = true;
+  const CompositorTransition *transition = PBL_IF_RECT_ELSE(
+      compositor_slide_transition_timeline_get(is_future, to_timeline, timeline_model_is_empty()),
+      compositor_dot_transition_timeline_get(is_future, to_timeline));
+  if (is_future) {
+    Uuid past_uuid = TIMELINE_PAST_UUID_INIT;
+    TimelineArgs args = (TimelineArgs) {
+      .direction = TimelineIterDirectionPast,
+      .force_full = true,
+    };
+    app_manager_put_launch_app_event(&(AppLaunchEventConfig) {
+      .id = app_install_get_id_for_uuid((const Uuid *)(&past_uuid)),
+      .common.args = (const void *)&args,
+      .common.transition = transition,
+    });
+  } else {
+    Uuid full_uuid = TIMELINE_FULL_UUID_INIT;
+    app_manager_put_launch_app_event(&(AppLaunchEventConfig) {
+      .id = app_install_get_id_for_uuid((const Uuid *)(&full_uuid)),
+      .common.transition = transition,
+    });
+  }
+}
+
 static void prv_cleanup_timer(EventedTimerID *timer) {
   if (evented_timer_exists(*timer)) {
     evented_timer_cancel(*timer);
@@ -574,7 +600,7 @@ static void prv_up_down_click_handler(ClickRecognizerRef recognizer, void *conte
   const bool was_stationary = (data->state == TimelineAppStateStationary);
 
   if (data->state == TimelineAppStateNoEvents) {
-    if (!next) {
+    if (!next && !data->full_app_view) {
       prv_exit(data);
     }
     return; // There are no events
@@ -599,7 +625,11 @@ static void prv_up_down_click_handler(ClickRecognizerRef recognizer, void *conte
     timeline_layer_move_data(&data->timeline_layer, 1);
   } else {
     if (!timeline_model_iter_prev(&new_idx, &has_new)) {
-      prv_exit(data);
+      if (data->full_app_view) {
+        prv_swap_timeline(data);
+      } else {
+        prv_exit(data);
+      }
       goto done;
     }
     if (has_new) {
@@ -642,7 +672,11 @@ done:
 }
 
 static void prv_click_config_provider(void *context) {
-  window_single_click_subscribe(BUTTON_ID_BACK, prv_back_click_handler);
+  TimelineAppData *data = (TimelineAppData *)context;
+  if (!data->full_app_view) {
+    // Used to override the back navigation animation
+    window_single_click_subscribe(BUTTON_ID_BACK, prv_back_click_handler);
+  }
   window_single_click_subscribe(BUTTON_ID_UP, prv_up_down_click_handler);
   window_single_click_subscribe(BUTTON_ID_DOWN, prv_up_down_click_handler);
   window_single_click_subscribe(BUTTON_ID_SELECT, prv_select_click_handler);
@@ -1147,6 +1181,11 @@ static bool NOINLINE prv_setup_timeline_app(void) {
   const TimelineArgs *args = process_manager_get_current_process_args();
   Uuid app_uuid;
   sys_get_app_uuid(&app_uuid);
+
+  if (uuid_equal(&app_uuid, &(Uuid)TIMELINE_FULL_UUID_INIT) || (args != NULL && args->force_full)) {
+    data->full_app_view = true;
+  }
+
   if (uuid_equal(&app_uuid, &(Uuid)TIMELINE_PAST_UUID_INIT)) {
     data->timeline_model.direction = TimelineIterDirectionPast;
   } else if (args == NULL) {
@@ -1264,6 +1303,18 @@ const PebbleProcessMd *timeline_past_get_app_info() {
     /// The title of Timeline Past in Quick Launch. If the translation is too long, cut out
     /// Timeline and only translate "Past".
     .name = i18n_noop("Timeline Past"),
+  };
+  return &s_app_md.common;
+}
+
+const PebbleProcessMd *timeline_full_get_app_info() {
+  static const PebbleProcessMdSystem s_app_md = {
+    .common = {
+      .main_func = prv_main,
+      .uuid = TIMELINE_FULL_UUID_INIT,
+      .visibility = ProcessVisibilityShown,
+    },
+    .name = i18n_noop("Timeline"),
   };
   return &s_app_md.common;
 }
