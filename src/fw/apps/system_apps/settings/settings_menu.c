@@ -16,6 +16,7 @@
 #if CAPABILITY_HAS_HEALTH_TRACKING
 #include "settings_health.h"
 #endif
+#include "settings_paul.h"
 
 #if CAPABILITY_HAS_VIBE_SCORES
 #include "settings_vibe_patterns.h"
@@ -53,6 +54,7 @@ static const SettingsModuleGetMetadata s_submodule_registry[] = {
   [SettingsMenuItemThemes]        = settings_themes_get_info,
 #endif
   [SettingsMenuItemSystem]        = settings_system_get_info,
+  [SettingsMenuItemPaul]          = settings_paul_get_info,
 };
 
 const SettingsModuleMetadata *settings_menu_get_submodule_info(SettingsMenuItem category) {
