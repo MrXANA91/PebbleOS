@@ -32,6 +32,7 @@ typedef enum {
 #endif
   SettingsMenuItemActivity,
   SettingsMenuItemSystem,
+  SettingsMenuItemPaul,
   SettingsMenuItem_Count,
   SettingsMenuItem_Invalid
 } SettingsMenuItem;
