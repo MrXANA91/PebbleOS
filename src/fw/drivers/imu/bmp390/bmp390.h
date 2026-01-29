@@ -3,4 +3,51 @@
 
 #pragma once
 
-void bmp390_init();
+#include "util/attributes.h"
+
+#include <stdint.h>
+
+typedef enum {
+    BMP390_PRESET_HANDHELD_LOWPOWER,
+    BMP390_PRESET_HANDHELD_DYNAMIC,
+    BMP390_PRESET_WEATHER_MONITOR,
+    BMP390_PRESET_DROP_DETECTION,
+    BMP390_PRESET_INDOOR_NAVIGATION,
+    BMP390_PRESET_DRONE,
+    BMP390_PRESET_INDOOR_LOCALIZATION,
+    BMP390_PRESET_COUNT,
+} bmp390_presets_t;
+
+void bmp390_init(void);
+
+void bmp390_apply_preset(bmp390_presets_t preset);
+
+// --- PLaceholder for barometer API ---
+
+typedef struct PACKED {
+    int16_t pressure;
+    int16_t temperature;
+} BarData;
+
+typedef enum {
+    BarReadSuccess = 0,
+    BarReadClobbered = -1,
+    BarReadCommunicationFail = -2,
+    BarReadMagOff = -3,
+    BarReadNoBar = -4,
+} BarReadStatus;
+
+typedef enum {
+    BarSampleLowPower,
+    BarSampleDynamic,
+} BarSampleMode;
+
+void bar_use(void);
+
+void bar_start_sampling(void);
+
+void bar_release(void);
+
+BarReadStatus bar_read_data(BarData *data);
+
+bool bar_change_sample_mode(BarSampleMode mode);
