@@ -12,9 +12,11 @@
 // --- Static variables ---
 
 static bool s_initialized = false;
-static int8_t s_preset_index = -1;
 static int s_use_refcount = 0;
 static PebbleMutex *s_bar_mutex;
+static BarSampleMode s_sample_mode = BarSampleDisabled;
+static bmp390_preset_config_data_t s_config_data = {0};
+static bool s_measurement_ready = false;
 
 // --- Structures ---
 
@@ -38,10 +40,10 @@ static bmp390_preset_config_data_t s_presets_config[BMP390_PRESET_COUNT] = {
 
 // --- Functions prototypes ---
 
+static bool prv_apply_preset(bmp390_presets_t preset);
 static bool prv_read_register(uint8_t register_address, uint8_t *result);
 static bool prv_write_register(uint8_t register_address, uint8_t datum);
 static bool prv_get_preset_config(bmp390_presets_t preset, bmp390_preset_config_data_t *config);
-static uint8_t prv_set_osr_register(uint8_t pressure, uint8_t temperature);
 
 // --- Initialisation ---
 
@@ -74,19 +76,19 @@ void bar_start_sampling(void) {
 
 void bar_release(void) {
   PBL_ASSERTN(s_initialized && s_use_refcount != 0);
-  mutex_lock(s_mag_mutex);
+  mutex_lock(s_bar_mutex);
   --s_use_refcount;
   if (s_use_refcount == 0) {
-    if (!prv_mmc5603nj_set_sample_rate_hz(0)) {
-      PBL_LOG(LOG_LEVEL_ERROR, "MMC5603NJ: Failed to disable sensor on release");
+    if (!bar_change_sample_mode(BarSampleDisabled)) {
+      PBL_LOG(LOG_LEVEL_ERROR, "BMP390: Failed to disable sensor on release");
     }
   }
-  mutex_unlock(s_mag_mutex);
+  mutex_unlock(s_bar_mutex);
 }
 
 BarReadStatus bar_read_data(BarData *data) {
   mutex_lock(s_bar_mutex);
-  BarReadStatus ret = BarReadCommunicationFail; // TODO
+  BarReadStatus ret = prv_get_sample(data);
   mutex_unlock(s_bar_mutex);
   return ret;
 }
@@ -99,8 +101,18 @@ bool bar_change_sample_mode(BarSampleMode mode) {
     return true;
   }
 
+  // Reset device runtime
+  if (!prv_write_register(BMP390_REG_CMD, BMP390_CMD_SOFT_RESET)) {
+    PBL_LOG(LOG_LEVEL_ERROR, "BMP390: Failed to write command");
+    return false;
+  }
+
   bmp390_presets_t preset;
   switch (mode) {
+    case BarSampleDisabled:
+      s_sample_mode = mode;
+      mutex_unlock(s_bar_mutex);
+      return true;
     case BarSampleLowPower:
       preset = BMP390_PRESET_HANDHELD_LOWPOWER;
       break;
@@ -112,7 +124,12 @@ bool bar_change_sample_mode(BarSampleMode mode) {
       return false;
   }
 
-  bool rv = bmp390_apply_preset(preset);
+  bool rv = prv_apply_preset(preset);
+  if (rv) {
+    s_sample_mode = mode;
+
+    // Configure polling ?
+  }
   mutex_unlock(s_bar_mutex);
   return rv;
 }
@@ -149,7 +166,7 @@ static bool prv_get_preset_config(bmp390_presets_t preset, bmp390_preset_config_
   return true;
 }
 
-bool bmp390_apply_preset(bmp390_presets_t preset) {
+bool prv_apply_preset(bmp390_presets_t preset) {
   bmp390_preset_config_data_t config;
   if (!prv_get_preset_config(preset, &config)) {
     return false;
@@ -178,17 +195,41 @@ bool bmp390_apply_preset(bmp390_presets_t preset) {
 static bool prv_is_data_ready(void) {
   uint8_t status = 0;
   prv_read_register(BMP390_REG_STATUS, 1, &status);
-  return (status & (BMP390_STATUS_MASK_PRES_DATA_READY | BMP390_STATUS_MASK_TEMP_DATA_READY)) != 0;
+  return (status & (BMP390_STATUS_MASK_PRES_DATA_READY | BMP390_STATUS_MASK_TEMP_DATA_READY)) == (BMP390_STATUS_MASK_PRES_DATA_READY | BMP390_STATUS_MASK_TEMP_DATA_READY);
 }
 
 static BarReadStatus prv_get_sample(BarData *sample) {
   // Check if sensor enabled
+  if (s_sample_mode == BarSampleDisabled) {
+    return BarReadBarOff;
+  }
 
   // Check if data is ready
+  if (!s_measurement_ready) {
+    if (prv_is_data_ready()) {
+      s_measurement_ready = true;
+    }
+  }
+  if (!s_measurement_ready) {
+    PBL_LOG(LOG_LEVEL_ERROR, "BMP390: No new measurements");
+    return BarReadCommunicationFail;
+  }
+  s_measurement_ready = false;
 
   // Data ready: read registers
+  uint8_t raw_data[6];
+  if (!prv_read_register(BMP390_REG_DATA, sizeof(raw_data), raw_data)) {
+    PBL_LOG(LOG_LEVEL_ERROR, "BMP390: Unable to read new measurements");
+    return BarReadCommunicationFail;
+  }
 
-  // Convert (?)
+  // 16-bit values, with 5 bits of possible oversampling
+  uint32_t raw_pressure = ((uint32_t)raw_data[0] << 13) + ((uint32_t)raw_data[1] << 5) + (raw_data[2] >> 3);
+  uint32_t raw_temperature = ((uint32_t)raw_data[3] << 13) + ((uint32_t)raw_data[4] << 5) + (raw_data[5] >> 3);
+
+  // Convert
+  sample->pressure = raw_pressure * 0.085;
+  sample->temperature = raw_temperature * 0.00015;
 
   return BarReadSuccess;
 }

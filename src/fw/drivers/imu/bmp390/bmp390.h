@@ -20,24 +20,23 @@ typedef enum {
 
 void bmp390_init(void);
 
-void bmp390_apply_preset(bmp390_presets_t preset);
-
 // --- PLaceholder for barometer API ---
 
 typedef struct PACKED {
-    int16_t pressure;
-    int16_t temperature;
+    float pressure;
+    float temperature;
 } BarData;
 
 typedef enum {
     BarReadSuccess = 0,
     BarReadClobbered = -1,
     BarReadCommunicationFail = -2,
-    BarReadMagOff = -3,
+    BarReadBarOff = -3,
     BarReadNoBar = -4,
 } BarReadStatus;
 
 typedef enum {
+    BarSampleDisabled,
     BarSampleLowPower,
     BarSampleDynamic,
 } BarSampleMode;

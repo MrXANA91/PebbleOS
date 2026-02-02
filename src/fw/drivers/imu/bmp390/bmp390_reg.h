@@ -39,6 +39,8 @@
 #define BMP390_CHIP_ID_VALUE        0x60
 #define BMP390_REV_ID_VALUE         0x01
 
+#define BMP390_REG_DATA             BMP390_REG_PRESSURE_DATA_0
+
 // Status masks - for BMP390_REG_STATUS
 #define BMP390_STATUS_MASK_CMD_READY            (1 << 4)
 #define BMP390_STATUS_MASK_PRES_DATA_READY      (1 << 5)
@@ -78,15 +80,15 @@
 #define BMP390_SAMP_FREQ_0p0015     0x11
 
 // IIR filter coef - for BMP390_REG_CONFIG
-#define BMP390_FILTER_COEF_OFF  0x0
-#define BMP390_FILTER_COEF_2    0x1
-#define BMP390_FILTER_COEF_4    0x2
-#define BMP390_FILTER_COEF_8    0x3
-#define BMP390_FILTER_COEF_16   0x4
-#define BMP390_FILTER_COEF_32   0x5
-#define BMP390_FILTER_COEF_64   0x6
-#define BMP390_FILTER_COEF_128  0x7
+#define BMP390_FILTER_COEF_OFF      0x0
+#define BMP390_FILTER_COEF_2        0x1
+#define BMP390_FILTER_COEF_4        0x2
+#define BMP390_FILTER_COEF_8        0x3
+#define BMP390_FILTER_COEF_16       0x4
+#define BMP390_FILTER_COEF_32       0x5
+#define BMP390_FILTER_COEF_64       0x6
+#define BMP390_FILTER_COEF_128      0x7
 
 // Commands - for BMP390_REG_CMD
-#define BMP_CMD_FIFO_FLUSH      0xB0
-#define BMP_CMD_SOFT_RESET      0xB6
+#define BMP390_CMD_FIFO_FLUSH      0xB0
+#define BMP390_CMD_SOFT_RESET      0xB6
