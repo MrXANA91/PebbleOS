@@ -595,6 +595,7 @@ def _build_recovery(bld):
         excludes.extend([
             'apps/prf_apps/mfg_speaker_asterix_app.c',
             'apps/prf_apps/mfg_mic_asterix_app.c',
+            'apps/prf_apps/mfg_bar_app.c',
         ])
     
     if not bld.is_obelix():

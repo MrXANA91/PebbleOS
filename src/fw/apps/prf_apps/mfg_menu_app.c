@@ -16,6 +16,9 @@
 #include "apps/prf_apps/mfg_bt_device_name_app.h"
 #include "apps/prf_apps/mfg_charge_app.h"
 #include "apps/prf_apps/mfg_backlight_app.h"
+#if PLATFORM_ASTERIX
+#include "apps/prf_apps/mfg_bar_app.h"
+#endif
 #include "apps/prf_apps/mfg_button_app.h"
 #include "apps/prf_apps/mfg_discharge_app.h"
 #include "apps/prf_apps/mfg_display_app.h"
@@ -119,6 +122,12 @@ static void prv_select_accel(int index, void *context) {
 #if CAPABILITY_HAS_MAGNETOMETER
 static void prv_select_mag(int index, void *context) {
   launcher_task_add_callback(prv_launch_app_cb, (void*) mfg_mag_app_get_info());
+}
+#endif
+
+#if PLATFORM_ASTERIX
+static void prv_select_bar(int index, void *context) {
+  launcher_task_add_callback(prv_launch_app_cb, (void*) mfg_bar_app_get_info());
 }
 #endif
 
@@ -354,6 +363,9 @@ static size_t prv_create_menu_items(SimpleMenuItem** out_menu_items) {
     { .title = "Test Accelerometer", .callback = prv_select_accel },
 #if CAPABILITY_HAS_MAGNETOMETER
     { .title = "Test Magnetometer", .callback = prv_select_mag },
+#endif
+#if PLATFORM_ASTERIX
+    { .title = "Test Barometer", .callback = prv_select_bar },
 #endif
 #if PLATFORM_ASTERIX || PLATFORM_OBELIX
     { .title = "Test Speaker",      .callback = prv_select_speaker },

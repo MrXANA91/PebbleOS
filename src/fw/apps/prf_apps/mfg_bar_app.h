@@ -3,4 +3,6 @@
 
 #pragma once
 
-void bmp390_init(void);
+#include "process_management/pebble_process_md.h"
+
+const PebbleProcessMd* mfg_bar_app_get_info(void);

@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include "drivers/i2c.h"
+#include "drivers/barometer.h"
 #include "os/mutex.h"
 #include "system/logging.h"
 #include "system/passert.h"
@@ -9,16 +10,18 @@
 #include "bmp390.h"
 #include "bmp390_reg.h"
 
-// --- Static variables ---
-
-static bool s_initialized = false;
-static int s_use_refcount = 0;
-static PebbleMutex *s_bar_mutex;
-static BarSampleMode s_sample_mode = BarSampleDisabled;
-static bmp390_preset_config_data_t s_config_data = {0};
-static bool s_measurement_ready = false;
-
 // --- Structures ---
+
+typedef enum {
+    BMP390_PRESET_HANDHELD_LOWPOWER,
+    BMP390_PRESET_HANDHELD_DYNAMIC,
+    BMP390_PRESET_WEATHER_MONITOR,
+    BMP390_PRESET_DROP_DETECTION,
+    BMP390_PRESET_INDOOR_NAVIGATION,
+    BMP390_PRESET_DRONE,
+    BMP390_PRESET_INDOOR_LOCALIZATION,
+    BMP390_PRESET_COUNT,
+} bmp390_presets_t;
 
 typedef struct {
   uint8_t oversamp_pressure;
@@ -38,12 +41,23 @@ static bmp390_preset_config_data_t s_presets_config[BMP390_PRESET_COUNT] = {
   { BMP390_OVERSAMP_ULTRA_LOW_POWER_X1, BMP390_OVERSAMP_ULTRA_LOW_POWER_X1, BMP390_FILTER_COEF_4, BMP390_SAMP_FREQ_1p5, false, 0},
 };
 
+// --- Static variables ---
+
+static bool s_initialized = false;
+static int s_use_refcount = 0;
+static PebbleMutex *s_bar_mutex;
+static BarSampleMode s_sample_mode = BarSampleDisabled;
+static bmp390_preset_config_data_t s_config_data = {0};
+static uint16_t s_manual_sampling_period = -1;
+static bool s_measurement_ready = false;
+
 // --- Functions prototypes ---
 
 static bool prv_apply_preset(bmp390_presets_t preset);
-static bool prv_read_register(uint8_t register_address, uint8_t *result);
+static bool prv_read_register(uint8_t register_address, uint8_t data_len, uint8_t *result);
 static bool prv_write_register(uint8_t register_address, uint8_t datum);
 static bool prv_get_preset_config(bmp390_presets_t preset, bmp390_preset_config_data_t *config);
+static BarReadStatus prv_get_sample(BarData *sample);
 
 // --- Initialisation ---
 
@@ -128,7 +142,8 @@ bool bar_change_sample_mode(BarSampleMode mode) {
   if (rv) {
     s_sample_mode = mode;
 
-    // Configure polling ?
+    // Configure polling
+    
   }
   mutex_unlock(s_bar_mutex);
   return rv;
@@ -163,28 +178,39 @@ static bool prv_get_preset_config(bmp390_presets_t preset, bmp390_preset_config_
   }
 
   config = &(s_presets_config[preset]);
+  (void)config; // Bypass -Werror=unused-but-set-parameter
   return true;
 }
 
 bool prv_apply_preset(bmp390_presets_t preset) {
-  bmp390_preset_config_data_t config;
-  if (!prv_get_preset_config(preset, &config)) {
+  bmp390_preset_config_data_t *config = NULL;
+  if (!prv_get_preset_config(preset, config)) {
     return false;
   }
 
-  if (!prv_write_register(BMP390_REG_OSR, config.oversamp_pressure | (config.oversamp_temperature << 3))) {
+  if (!prv_write_register(BMP390_REG_OSR, config->oversamp_pressure | (config->oversamp_temperature << 3))) {
     PBL_LOG(LOG_LEVEL_ERROR, "BMP390: Failed to set oversampling");
     return false;
   }
 
-  if (!prv_write_register(BMP390_REG_CONFIG, config.iir_filter_coef)) {
+  if (!prv_write_register(BMP390_REG_CONFIG, config->iir_filter_coef)) {
     PBL_LOG(LOG_LEVEL_ERROR, "BMP390: Failed to set iir filter coefficient");
     return false;
   }
 
-  if (!prv_write_register(BMP390_REG_ODR, config.sampling_freq_hz)) {
+  if (!prv_write_register(BMP390_REG_ODR, config->sampling_freq_hz)) {
     PBL_LOG(LOG_LEVEL_ERROR, "BMP390: Failed to set sampling frequency");
     return false;
+  }
+
+  uint8_t mode = config->forced_mode ? BMP390_MODE_FORCED : BMP390_MODE_NORMAL;
+  if (!prv_write_register(BMP390_REG_PWR_CTRL, mode)) {
+    PBL_LOG(LOG_LEVEL_ERROR, "BMP390: Failed to set power mode");
+    return false;
+  }
+
+  if (config->forced_mode) {
+    s_manual_sampling_period = config->manual_sampling_period_sec;
   }
 
   return true;
