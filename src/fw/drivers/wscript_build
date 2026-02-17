@@ -252,7 +252,7 @@ elif mcu_family in ('NRF52840'):
     bld.objects(
         name='driver_temperature',
         source=[
-            'stubs/temperature.c',
+            'pressure/bmp390/temperature.c',
         ],
         use=[
             'fw_includes',
@@ -937,7 +937,7 @@ if bld.is_asterix():
     bld.objects(
         name='driver_pressure',
         source=[
-            'pressure/bmp390.c',
+            'pressure/bmp390/bmp390.c',
         ],
         use=[
             'driver_i2c',

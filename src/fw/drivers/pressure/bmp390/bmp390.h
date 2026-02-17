@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+
 // --- Structures and enums ---
 
 typedef enum {
@@ -41,4 +44,5 @@ typedef struct {
 
 void bmp390_init(void);
 
-void bmp390_start_sampling();
+int32_t bmp390_get_temperature();
+int32_t bmp390_get_pressure();

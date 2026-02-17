@@ -2,7 +2,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include "board/board.h"
-#include "console/prompt.h"
 #include "drivers/i2c.h"
 #include "drivers/pressure.h"
 #include "drivers/temperature.h"
@@ -59,27 +58,9 @@ void bmp390_init() {
   }
 }
 
-// --- Pressure API implementation ---
+// --- API implementation
 
-void pressure_init() {
-  bmp390_init();
-}
-
-int32_t pressure_read() {
-  int32_t result;
-  mutex_lock(s_bmp390_mutex);
-  result = s_last_reading.pressure;
-  mutex_unlock(s_bmp390_mutex);
-  return result;
-}
-
-// --- Temperature API implementation ---
-
-void temperature_init() {
-  bmp390_init();
-}
-
-int32_t temperature_read() {
+int32_t bmp390_get_temperature() {
   int32_t result;
   mutex_lock(s_bmp390_mutex);
   result = s_last_reading.temperature;
@@ -87,9 +68,22 @@ int32_t temperature_read() {
   return result;
 }
 
-void command_temperature_read(void) {
-  char buffer[32];
-  prompt_send_response_fmt(buffer, sizeof(buffer), "%"PRId32" ", temperature_read());
+int32_t bmp390_get_pressure() {
+  int32_t result;
+  mutex_lock(s_bmp390_mutex);
+  result = s_last_reading.pressure;
+  mutex_unlock(s_bmp390_mutex);
+  return result;
+}
+
+// --- Pressure API implementation ---
+
+void pressure_init() {
+  bmp390_init();
+}
+
+int32_t pressure_read() {
+  return bmp390_get_pressure();
 }
 
 // --- I2C helper functions ---
