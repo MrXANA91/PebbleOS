@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include "board/board.h"
+#include "console/prompt.h"
 #include "drivers/i2c.h"
 #include "drivers/pressure.h"
 #include "drivers/temperature.h"
@@ -84,6 +85,11 @@ int32_t temperature_read() {
   result = s_last_reading.temperature;
   mutex_unlock(s_bmp390_mutex);
   return result;
+}
+
+void command_temperature_read(void) {
+  char buffer[32];
+  prompt_send_response_fmt(buffer, sizeof(buffer), "%"PRId32" ", temperature_read());
 }
 
 // --- I2C helper functions ---
