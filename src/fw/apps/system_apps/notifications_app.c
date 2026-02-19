@@ -671,6 +671,16 @@ static void prv_handle_notification(PebbleEvent *e, void *context) {
 ///////////////////
 // Window callbacks
 
+static void prv_exit() {
+  (void)app_window_stack_pop(true);
+}
+
+static void prv_click_config_provider(void *context) {
+  window_single_click_subscribe(BUTTON_ID_UP, prv_exit);
+  window_single_click_subscribe(BUTTON_ID_DOWN, prv_exit);
+  window_single_click_subscribe(BUTTON_ID_SELECT, prv_exit);
+}
+
 static void prv_window_appear(Window *window) {
   NotificationsData *data = window_get_user_data(window);
 
@@ -688,24 +698,29 @@ static void prv_window_load(Window *window) {
   MenuLayer *menu_layer = &data->menu_layer;
   const GRect menu_layer_frame = PBL_IF_RECT_ELSE(
       window->layer.bounds, grect_inset_internal(window->layer.bounds, 0, STATUS_BAR_LAYER_HEIGHT));
-  menu_layer_init(menu_layer, &menu_layer_frame);
-  menu_layer_set_callbacks(menu_layer, data, &(MenuLayerCallbacks) {
-      .get_num_rows = prv_get_num_rows_callback,
-      .draw_row = prv_draw_row_callback,
-      .get_cell_height = prv_get_cell_height,
-      .select_click = prv_select_callback,
-  });
+  
+  if (data->notification_list) {
+    menu_layer_init(menu_layer, &menu_layer_frame);
+    menu_layer_set_callbacks(menu_layer, data, &(MenuLayerCallbacks) {
+        .get_num_rows = prv_get_num_rows_callback,
+        .draw_row = prv_draw_row_callback,
+        .get_cell_height = prv_get_cell_height,
+        .select_click = prv_select_callback,
+    });
 
-  menu_layer_set_normal_colors(menu_layer, GColorWhite, GColorBlack);
-  menu_layer_set_highlight_colors(menu_layer,
-                                  PBL_IF_COLOR_ELSE(DEFAULT_NOTIFICATION_COLOR, GColorBlack),
-                                  GColorWhite);
+    menu_layer_set_normal_colors(menu_layer, GColorWhite, GColorBlack);
+    menu_layer_set_highlight_colors(menu_layer,
+                                    PBL_IF_COLOR_ELSE(DEFAULT_NOTIFICATION_COLOR, GColorBlack),
+                                    GColorWhite);
 
-  menu_layer_set_click_config_onto_window(menu_layer, window);
-  menu_layer_set_scroll_wrap_around(menu_layer, shell_prefs_get_menu_scroll_wrap_around_enable());
-  menu_layer_set_scroll_vibe_on_wrap(menu_layer, shell_prefs_get_menu_scroll_vibe_behavior() == MenuScrollVibeOnWrapAround);
-  menu_layer_set_scroll_vibe_on_blocked(menu_layer, shell_prefs_get_menu_scroll_vibe_behavior() == MenuScrollVibeOnLocked);
-  layer_add_child(&window->layer, menu_layer_get_layer(menu_layer));
+    menu_layer_set_click_config_onto_window(menu_layer, window);
+    menu_layer_set_scroll_wrap_around(menu_layer, shell_prefs_get_menu_scroll_wrap_around_enable());
+    menu_layer_set_scroll_vibe_on_wrap(menu_layer, shell_prefs_get_menu_scroll_vibe_behavior() == MenuScrollVibeOnWrapAround);
+    menu_layer_set_scroll_vibe_on_blocked(menu_layer, shell_prefs_get_menu_scroll_vibe_behavior() == MenuScrollVibeOnLocked);
+    layer_add_child(&window->layer, menu_layer_get_layer(menu_layer));
+  } else {
+    window_set_click_config_provider(window, prv_click_config_provider);
+  }
 
   TextLayer *text_layer = &data->text_layer;
   const int16_t horizontal_margin = 5;
