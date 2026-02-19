@@ -24,6 +24,7 @@ typedef enum {
   BMP390_SAMPLING_SLOW,         // one sample per minute --> BMP390_PRESET_WEATHER_MONITOR
   BMP390_SAMPLING_FAST,         // 12 samples per seconds --> BMP390_PRESET_HANDHELD_LOWPOWER
   BMP390_SAMPLING_FASTER,       // 50 samples per seconds --> BMP390_PRESET_HANDHELD_DYNAMIC
+  BMP390_SAMPLING_COUNT
 } bmp390_sampling_t;
 
 typedef struct {
@@ -32,7 +33,7 @@ typedef struct {
   uint8_t iir_filter_coef;
   uint8_t sampling_freq_hz;
   bool forced_mode;
-  uint16_t manual_sampling_period_sec;
+  uint16_t sampling_period_ms;
 } bmp390_preset_config_data_t;
 
 typedef struct {
@@ -43,6 +44,8 @@ typedef struct {
 // --- Functions prototypes ---
 
 void bmp390_init(void);
+void bmp390_configure(void);
 
-int32_t bmp390_get_temperature();
-int32_t bmp390_get_pressure();
+int32_t bmp390_get_temperature(void);
+int32_t bmp390_get_pressure(void);
+bmp390_sampling_t bmp390_get_sampling_mode(void);

@@ -13,6 +13,9 @@
 
 void temperature_init() {
   bmp390_init();
+#ifndef RECOVERY_FW
+  bmp390_configure();
+#endif
 }
 
 int32_t temperature_read() {

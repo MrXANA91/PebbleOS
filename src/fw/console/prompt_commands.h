@@ -171,6 +171,7 @@ extern void command_version_info(void);
 
 extern void command_als_read(void);
 extern void command_temperature_read(void);
+extern void command_pressure_read(void);
 
 extern void command_get_connected_os(void);
 
@@ -349,6 +350,9 @@ static const Command s_prompt_commands[] = {
 #ifndef RECOVERY_FW
 #if CAPABILITY_HAS_TEMPERATURE
   { "temp read",  command_temperature_read, 0 },
+#endif
+#if CAPABILITY_HAS_PRESSURE_SENSOR
+  { "press read", command_pressure_read, 0},
 #endif
   { "als read", command_als_read, 0},
 #ifndef RELEASE
