@@ -607,6 +607,17 @@ static void prv_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuIn
   draw_cell(ctx, cell_layer, title, subtitle, loaded_node->icon);
 }
 
+static void prv_exit() {
+  (void)app_window_stack_pop(true);
+}
+
+// Click config when no notifications
+static void prv_click_config_provider(void *context) {
+  window_single_click_subscribe(BUTTON_ID_UP, prv_exit);
+  window_single_click_subscribe(BUTTON_ID_DOWN, prv_exit);
+  window_single_click_subscribe(BUTTON_ID_SELECT, prv_exit);
+}
+
 // Display the appropriate layer
 static void prv_update_text_layer_visibility(NotificationsData *data) {
   NotificationNode *node = data->notification_list;
@@ -615,9 +626,11 @@ static void prv_update_text_layer_visibility(NotificationsData *data) {
   if (node == NULL) {
     layer_set_hidden((Layer *) &data->menu_layer, true);
     layer_set_hidden((Layer *) &data->text_layer, false);
+    window_set_click_config_provider(&data->window, prv_click_config_provider);
   } else {
     layer_set_hidden((Layer *) &data->menu_layer, false);
     layer_set_hidden((Layer *) &data->text_layer, true);
+    menu_layer_set_click_config_onto_window(&data->menu_layer, &data->window);
   }
 }
 
@@ -712,7 +725,6 @@ static void prv_window_load(Window *window) {
                                   PBL_IF_COLOR_ELSE(DEFAULT_NOTIFICATION_COLOR, GColorBlack),
                                   GColorWhite);
 
-  menu_layer_set_click_config_onto_window(menu_layer, window);
   menu_layer_set_scroll_wrap_around(menu_layer, shell_prefs_get_menu_scroll_wrap_around_enable());
   menu_layer_set_scroll_vibe_on_wrap(menu_layer, shell_prefs_get_menu_scroll_vibe_behavior() == MenuScrollVibeOnWrapAround);
   menu_layer_set_scroll_vibe_on_blocked(menu_layer, shell_prefs_get_menu_scroll_vibe_behavior() == MenuScrollVibeOnLocked);
